@@ -1,33 +1,18 @@
-"""
-Data Fetching Module
-
-This module handles the first step in the workflow: fetching data from the data provider.
-"""
-
+"""Data fetching node — retrieves OHLCV data from the configured exchange."""
 from datetime import datetime, timedelta
 from typing import Dict, Any
 
-from src.utils import BinanceDataProvider, Interval
+from src.utils import Interval
+from src.utils.data_provider_factory import create_data_provider
 from .base_node import BaseNode, AgentState
-
-# Initialize data provider
-data_provider = BinanceDataProvider()
 
 
 class DataNode(BaseNode):
-    def __init__(self, interval: Interval = Interval.DAY_1):
+    def __init__(self, interval: Interval = Interval.DAY_1, exchange: str = "binance"):
         self.interval = interval
+        self.data_provider = create_data_provider(exchange)
 
     def __call__(self, state: AgentState) -> Dict[str, Any]:
-        """
-        Fetch data for all required timeframes using the BinanceDataProvider.
-
-        Args:
-            state: The current state with symbol information
-
-        Returns:
-            Updated state with timeframes data
-        """
         data = state.get('data', {})
         data['name'] = "DataNode"
         timeframe: str = self.interval.value
@@ -35,7 +20,9 @@ class DataNode(BaseNode):
         end_time = data.get('end_date', datetime.now()) + timedelta(milliseconds=500)
 
         for ticker in tickers:
-            df = data_provider.get_history_klines_with_end_time(symbol=ticker, timeframe=timeframe, end_time=end_time)
+            df = self.data_provider.get_history_klines_with_end_time(
+                symbol=ticker, timeframe=timeframe, end_time=end_time,
+            )
             if df is not None and not df.empty:
                 data[f"{ticker}_{timeframe}"] = df
             else:

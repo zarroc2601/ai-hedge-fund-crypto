@@ -5,6 +5,7 @@ from .base_node import BaseNode
 from .empty_ndoe import EmptyNode
 from .risk_management_node import RiskManagementNode
 from .portfolio_management_node import PortfolioManagementNode
+from .execution_node import ExecutionNode
 
 __all__ = [
     'AgentState',
@@ -15,5 +16,5 @@ __all__ = [
     "EmptyNode",
     'RiskManagementNode',
     'PortfolioManagementNode',
-
+    'ExecutionNode',
 ]

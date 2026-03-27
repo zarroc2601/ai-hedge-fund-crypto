@@ -56,7 +56,7 @@ class Backtester:
         self.show_agent_graph = show_agent_graph
         self.show_reasoning = show_reasoning
         self.binance_data_provider = BinanceDataProvider()
-        self.klines: Dict[str, pd.DataFrame]() = {}
+        self.klines: Dict[str, pd.DataFrame] = {}
 
         # Initialize portfolio with support for long/short positions
         self.portfolio_values = []

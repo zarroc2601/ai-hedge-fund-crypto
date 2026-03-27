@@ -1,13 +1,25 @@
-from typing import List
+from typing import List, Optional
 from langgraph.graph import END, StateGraph
-from graph import AgentState, StartNode, DataNode, EmptyNode, RiskManagementNode, PortfolioManagementNode
+from graph import AgentState, StartNode, DataNode, EmptyNode, RiskManagementNode, PortfolioManagementNode, ExecutionNode
+from src.gateway.base_exchange_client import BaseExchangeClient
+from src.risk.circuit_breaker import CircuitBreaker
 from utils import import_strategy_class, Interval
 
 
 class Workflow:
     @staticmethod
-    def create_workflow(intervals: List[Interval], strategies: List[str]) -> StateGraph:
-        """Create the workflow with Strategy."""
+    def create_workflow(
+        intervals: List[Interval],
+        strategies: List[str],
+        exchange: str = "binance",
+        exchange_client: Optional[BaseExchangeClient] = None,
+        min_confidence: int = 50,
+        max_order_value: float = 1000.0,
+        circuit_breaker: Optional[CircuitBreaker] = None,
+        stop_loss_pct: float = 0.0,
+        take_profit_pct: float = 0.0,
+    ) -> StateGraph:
+        """Create the workflow with Strategy and optional ExecutionNode."""
         workflow = StateGraph(AgentState)
 
         start_node = StartNode()
@@ -18,7 +30,7 @@ class Workflow:
 
         for interval in intervals:
             node_name = f"{interval.value}_node"
-            data_node = DataNode(interval)
+            data_node = DataNode(interval, exchange=exchange)
             workflow.add_node(node_name, data_node)
             workflow.add_edge("start_node", node_name)
             workflow.add_edge(node_name, "merge_data_node")
@@ -34,15 +46,25 @@ class Workflow:
         portfolio_management_node = PortfolioManagementNode()
         workflow.add_node("risk_management_node", risk_management_node)
         workflow.add_node("portfolio_management_node", portfolio_management_node)
-        #
-        # # Connect selected analysts to risk management
+
         for strategy_node_name in strategies:
             workflow.add_edge(strategy_node_name, "risk_management_node")
-        # #
-        # workflow.add_edge("start_node", "risk_management_node")
+
         workflow.add_edge("risk_management_node", "portfolio_management_node")
-        workflow.add_edge("portfolio_management_node", END)
-        #
+
+        # Add execution node (passes through when no client is provided)
+        execution_node = ExecutionNode(
+            exchange_client=exchange_client,
+            min_confidence=min_confidence,
+            max_order_value=max_order_value,
+            circuit_breaker=circuit_breaker,
+            stop_loss_pct=stop_loss_pct,
+            take_profit_pct=take_profit_pct,
+        )
+        workflow.add_node("execution_node", execution_node)
+        workflow.add_edge("portfolio_management_node", "execution_node")
+        workflow.add_edge("execution_node", END)
+
         workflow.set_entry_point("start_node")
 
         return workflow

@@ -9,11 +9,13 @@ import pandas as pd
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from src.gateway.binance.client import Client
+from binance.client import Client
+from binance.enums import HistoricalKlinesType
+from src.utils.base_data_provider import BaseDataProvider
 from src.utils.constants import COLUMNS, NUMERIC_COLUMNS
 
 
-class BinanceDataProvider:
+class BinanceDataProvider(BaseDataProvider):
     """
     Class to handle data retrieval from Binance and prepare it for the trading system.
     """
@@ -200,11 +202,12 @@ class BinanceDataProvider:
         formatted_symbol = symbol.replace("/", "")
         try:
             # Use the client to get klines
-            klines = self.client.futures_historical_klines_with_end_time(
+            klines = self.client.get_historical_klines(
                 symbol=formatted_symbol,
                 interval=self._format_timeframe(timeframe),
                 end_str=end_time.strftime("%Y-%m-%d %H:%M:%S"),
-                limit=limit
+                limit=limit,
+                klines_type=HistoricalKlinesType.FUTURES,
             )
 
             df = pd.DataFrame(klines, columns=COLUMNS)

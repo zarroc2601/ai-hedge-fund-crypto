@@ -21,6 +21,24 @@ class ModelSettings(BaseModel):
     base_url: Optional[str] = None
 
 
+class ExecutionSettings(BaseModel):
+    """Settings for live order execution on exchanges."""
+    enabled: bool = False
+    exchange: str = "binance"       # binance | bybit
+    testnet: bool = True            # Always start with testnet
+    max_order_value: float = 1000.0 # USD cap per single order
+    min_confidence: int = 50        # Skip execution below this confidence
+
+
+class RiskSettings(BaseModel):
+    """Risk management settings for SL/TP and circuit breakers."""
+    stop_loss_pct: float = 2.0          # % below entry for stop-loss
+    take_profit_pct: float = 5.0        # % above entry for take-profit
+    max_daily_loss_pct: float = 5.0     # Halt trading if daily loss exceeds this
+    max_open_positions: int = 5         # Max concurrent open positions
+    max_position_pct: float = 20.0      # Max % of portfolio per position
+
+
 class Settings(BaseSettings):
     mode: str
     start_date: datetime
@@ -32,6 +50,8 @@ class Settings(BaseSettings):
     show_agent_graph: bool = True
     signals: SignalSettings
     model: ModelSettings
+    execution: ExecutionSettings = ExecutionSettings()
+    risk: RiskSettings = RiskSettings()
 
     @model_validator(mode='after')
     def check_primary_interval_in_intervals(self):

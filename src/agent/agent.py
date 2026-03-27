@@ -2,13 +2,37 @@ from typing import List, Dict, Optional
 from langchain_core.messages import HumanMessage
 from datetime import datetime
 from utils import Interval, save_graph_as_png, parse_str_to_json
+from src.gateway.base_exchange_client import BaseExchangeClient
+from src.risk.circuit_breaker import CircuitBreaker
 from .workflow import Workflow
 
 
 class Agent:
 
-    def __init__(self, intervals: List[Interval], strategies: List[str], show_agent_graph: bool = True):
-        workflow = Workflow.create_workflow(intervals=intervals, strategies=strategies)
+    def __init__(
+        self,
+        intervals: List[Interval],
+        strategies: List[str],
+        show_agent_graph: bool = True,
+        exchange: str = "binance",
+        exchange_client: Optional[BaseExchangeClient] = None,
+        min_confidence: int = 50,
+        max_order_value: float = 1000.0,
+        circuit_breaker: Optional[CircuitBreaker] = None,
+        stop_loss_pct: float = 0.0,
+        take_profit_pct: float = 0.0,
+    ):
+        workflow = Workflow.create_workflow(
+            intervals=intervals,
+            strategies=strategies,
+            exchange=exchange,
+            exchange_client=exchange_client,
+            min_confidence=min_confidence,
+            max_order_value=max_order_value,
+            circuit_breaker=circuit_breaker,
+            stop_loss_pct=stop_loss_pct,
+            take_profit_pct=take_profit_pct,
+        )
         self.intervals = intervals
         self.strategies = strategies
         self.agent = workflow.compile()
@@ -30,22 +54,6 @@ class Agent:
             model_provider: str = "openai",
             model_base_url: Optional[str] = None
     ):
-        """
-        Executes the trading workflow using the specified configuration.
-        Parameters:
-            primary_interval (Interval): The primary time interval used for decision making.
-            tickers (List[str]): List of asset symbols to include in the backtest or live run.
-            end_date (str): The end date for historical data used in the workflow.
-            portfolio (Dict): The initial state of the portfolio, including cash, positions, and margins.
-            show_reasoning (bool, optional): If True, includes model reasoning in the output. Defaults to False.
-            model_name (str, optional): The name of the LLM model to use. Defaults to "gpt-4o".
-            model_provider (str, optional): The provider of the LLM model. Defaults to "openai".
-            model_base_url (str, optional): The base URL of the LLM model. Defaults to None.
-
-        Returns:
-        None
-        """
-
         final_state = self.agent.invoke(
             {
                 "messages": [
@@ -69,8 +77,8 @@ class Agent:
                 },
             },
         )
-        # print("the final state:", final_state["data"]["analyst_signals"])
         return {
             "decisions": parse_str_to_json(final_state["messages"][-1].content),
             "analyst_signals": final_state["data"]["analyst_signals"],
+            "execution_results": final_state["data"].get("execution_results"),
         }

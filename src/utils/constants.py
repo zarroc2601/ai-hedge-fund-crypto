@@ -63,3 +63,17 @@ class Interval(Enum):
 # Build lookup map once for fast from_string
 _STRING_TO_INTERVAL = {i.value: i for i in Interval}
 
+# Bybit uses numeric strings for intervals (except D/W)
+BYBIT_INTERVAL_MAP = {
+    "1m": "1", "3m": "3", "5m": "5", "15m": "15", "30m": "30",
+    "1h": "60", "2h": "120", "4h": "240", "6h": "360",
+    "12h": "720", "1d": "D", "1w": "W",
+}
+
+# Interval duration in milliseconds (for close_time calculation)
+INTERVAL_MS = {
+    "1m": 60000, "3m": 180000, "5m": 300000, "15m": 900000, "30m": 1800000,
+    "1h": 3600000, "2h": 7200000, "4h": 14400000, "6h": 21600000,
+    "12h": 43200000, "1d": 86400000, "1w": 604800000,
+}
+
