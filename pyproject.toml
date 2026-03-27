@@ -32,5 +32,16 @@ dependencies = [
     "langchain-ollama>=0.3.3",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "pytest-mock>=3.14",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+
 #[tool.setuptools]
 #packages = ["src"]
