@@ -1,0 +1,13 @@
+services:
+  trading-bot:
+    build: .
+    container_name: ai-hedge-fund-crypto
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./config.yaml:/app/config.yaml:ro
+      - ./cache:/app/cache
+      - ./logs:/app/logs
+    # Override for backtest mode:
+    # command: python backtest.py
