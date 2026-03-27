@@ -96,6 +96,17 @@ class ExecutionNode(BaseNode):
                 execution_results[ticker] = {"status": "skipped", "reason": f"unknown_action_{action}"}
                 continue
 
+            # Cap order value (C1 fix: enforce max_order_value)
+            if self.max_order_value > 0:
+                # Estimate order value from risk data or last known price
+                risk_data = data.get("analyst_signals", {}).get("risk_management_agent", {}).get(ticker, {})
+                price_est = risk_data.get("current_price", 0)
+                if price_est > 0:
+                    max_qty = self.max_order_value / price_est
+                    if quantity > max_qty:
+                        logger.warning(f"{ticker}: capping qty {quantity} → {max_qty:.6f} (max_order_value=${self.max_order_value})")
+                        quantity = max_qty
+
             # Place market order
             result = self.client.place_market_order(symbol=ticker, side=side, quantity=quantity)
             exec_entry = {
@@ -115,6 +126,12 @@ class ExecutionNode(BaseNode):
                     ticker, action, result.filled_quantity, result.avg_price,
                 )
                 exec_entry["protective_orders"] = sl_tp_result
+
+            # Record trade PnL in circuit breaker (C2 fix: wire record_trade)
+            if result.status == "FILLED" and self.circuit_breaker:
+                # For closing positions (sell/cover), estimate PnL from fees as proxy
+                # Real PnL tracking requires position cost basis — simplified: record fees as loss
+                self.circuit_breaker.record_trade(-result.fees)
 
             status_icon = "✅" if result.status == "FILLED" else "❌"
             logger.info(
@@ -172,5 +189,12 @@ class ExecutionNode(BaseNode):
             )
             result["take_profit"] = {"price": tp_price, "status": tp_result.status}
             logger.info(f"🎯 {symbol}: TP@{tp_price:.2f} — {tp_result.status}")
+
+        # C4 fix: Alert on partial protection failure
+        sl_ok = result.get("stop_loss", {}).get("status") not in ("REJECTED", None)
+        tp_ok = result.get("take_profit", {}).get("status") not in ("REJECTED", None)
+        if (self.stop_loss_pct > 0 and not sl_ok) or (self.take_profit_pct > 0 and not tp_ok):
+            result["warning"] = "PARTIAL_PROTECTION"
+            logger.warning(f"⚠️ {symbol}: Incomplete protection! SL={sl_ok}, TP={tp_ok}")
 
         return result

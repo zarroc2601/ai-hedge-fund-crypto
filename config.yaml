@@ -1,10 +1,10 @@
 mode: backtest # backtest, live
-start_date: 2025-08-30
-end_date: 2025-09-04
+start_date: 2026-03-20
+end_date: 2026-03-27
 primary_interval: 1h
-initial_cash: 100000
+initial_cash: 10000
 margin_requirement: 0.0
-show_reasoning: false
+show_reasoning: true
 show_agent_graph: true
 signals:
   intervals: ["30m", "1h", "4h"]
@@ -12,8 +12,8 @@ signals:
   strategies: ['MacdStrategy']
 # , "RSIStrategy"]
 model:
-  name: "gpt-4o-mini"
-  provider: "openai"
+  name: "gemini-3.1-pro-preview"
+  provider: "gemini"
 #  base_url: "https://api.openai.com/v1"  #
 execution:
   enabled: false          # Set true to place real orders
